@@ -1,0 +1,44 @@
+name: algoscope
+description: "AlgoScope — classic algorithms visualized, with a Claude-inspired design system."
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.6.0 <4.0.0"
+  flutter: ">=3.27.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  google_fonts: ^6.2.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+
+  # Claude's real fonts (Tiempos, Copernicus, Styrene B) are licensed Klim Type
+  # Foundry fonts and are not bundled. If you have a license, drop the .ttf/.otf
+  # files in assets/fonts/ and uncomment the block below — the theme already
+  # requests these family names first and will pick them up automatically.
+  #
+  # fonts:
+  #   - family: Tiempos
+  #     fonts:
+  #       - asset: assets/fonts/Tiempos-Regular.otf
+  #       - asset: assets/fonts/Tiempos-Semibold.otf
+  #         weight: 600
+  #   - family: Copernicus
+  #     fonts:
+  #       - asset: assets/fonts/Copernicus-Semibold.otf
+  #         weight: 600
+  #   - family: "Styrene B"
+  #     fonts:
+  #       - asset: assets/fonts/StyreneB-Regular.otf
+  #       - asset: assets/fonts/StyreneB-Medium.otf
+  #         weight: 500
+  #       - asset: assets/fonts/StyreneB-Bold.otf
+  #         weight: 700
