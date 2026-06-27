@@ -53,8 +53,11 @@ class _HomeScreenState extends State<HomeScreen> {
     final results = _filtered;
 
     return Scaffold(
+      backgroundColor: Colors.transparent,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         titleSpacing: 20,
+        flexibleSpace: const _GlassBar(),
         title: Row(
           children: [
             Icon(Icons.hub_rounded, color: theme.colorScheme.primary, size: 22),
@@ -63,8 +66,9 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
-      body: SafeArea(
-        child: Center(
+      body: GlassScaffoldBackground(
+        child: SafeArea(
+          child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 1100),
             child: CustomScrollView(
@@ -82,7 +86,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     onQueryChanged: (v) => setState(() => _query = v),
                     onCategorySelected: (c) =>
                         setState(() => _categoryFilter = c),
-                    background: theme.scaffoldBackgroundColor,
                   ),
                 ),
                 if (results.isEmpty)
@@ -99,6 +102,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ),
+      ),
       ),
     );
   }
@@ -156,6 +160,21 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
     return slivers;
+  }
+}
+
+/// A real liquid-glass app-bar background — refracts the content that scrolls
+/// underneath it.
+class _GlassBar extends StatelessWidget {
+  const _GlassBar();
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassPanel(
+      radius: 0,
+      settings: Glass.settings(context, thickness: 12, blur: 4),
+      child: const SizedBox.expand(),
+    );
   }
 }
 
@@ -235,7 +254,6 @@ class _SearchBar extends StatelessWidget {
     required this.categoryFilter,
     required this.onQueryChanged,
     required this.onCategorySelected,
-    required this.background,
   });
 
   final TextEditingController controller;
@@ -243,13 +261,11 @@ class _SearchBar extends StatelessWidget {
   final AlgoCategory? categoryFilter;
   final ValueChanged<String> onQueryChanged;
   final ValueChanged<AlgoCategory?> onCategorySelected;
-  final Color background;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Container(
-      color: background,
+    return Padding(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 10),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -274,7 +290,7 @@ class _SearchBar extends StatelessWidget {
                       },
                     ),
               filled: true,
-              fillColor: theme.colorScheme.surface,
+              fillColor: theme.colorScheme.surface.withValues(alpha: 0.45),
               contentPadding: const EdgeInsets.symmetric(vertical: 12),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -348,8 +364,8 @@ class _FilterChip extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
             decoration: BoxDecoration(
               color: selected
-                  ? color.withValues(alpha: 0.16)
-                  : theme.colorScheme.surface,
+                  ? color.withValues(alpha: 0.18)
+                  : theme.colorScheme.surface.withValues(alpha: 0.4),
               borderRadius: BorderRadius.circular(18),
               border: Border.all(
                 color: selected

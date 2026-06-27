@@ -130,7 +130,8 @@ class AppTheme {
       );
 
   static AppBarTheme _appBar(Color bg, Color fg) => AppBarTheme(
-        backgroundColor: bg,
+        // Translucent so the liquid-glass backdrop shows through behind it.
+        backgroundColor: bg.withValues(alpha: 0.55),
         foregroundColor: fg,
         elevation: 0,
         scrolledUnderElevation: 0,

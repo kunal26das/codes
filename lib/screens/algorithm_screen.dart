@@ -123,7 +123,14 @@ class _AlgorithmScreenState extends State<AlgorithmScreen> {
   Widget build(BuildContext context) {
     final info = widget.info;
     return Scaffold(
+      backgroundColor: Colors.transparent,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
+        flexibleSpace: GlassPanel(
+          radius: 0,
+          settings: Glass.settings(context, thickness: 12, blur: 4),
+          child: const SizedBox.expand(),
+        ),
         title: Text(info.name, style: const TextStyle(fontWeight: FontWeight.w700)),
         actions: [
           IconButton(
@@ -139,8 +146,14 @@ class _AlgorithmScreenState extends State<AlgorithmScreen> {
           const SizedBox(width: 8),
         ],
       ),
-      body: Focus(
-        focusNode: _focusNode,
+      body: GlassScaffoldBackground(
+        accents: [
+          info.category.color,
+          AppColors.highlight,
+          AppColors.done,
+        ],
+        child: Focus(
+          focusNode: _focusNode,
         autofocus: true,
         onKeyEvent: _onKey,
         child: SafeArea(
@@ -198,6 +211,7 @@ class _AlgorithmScreenState extends State<AlgorithmScreen> {
             );
           },
         ),
+      ),
       ),
       ),
     );
