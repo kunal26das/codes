@@ -108,7 +108,7 @@ class _GlassBackdropState extends State<GlassBackdrop> {
     final dark = Theme.of(context).brightness == Brightness.dark;
     // A solid, readable canvas.
     final base = dark ? const Color(0xFF1F1E1D) : const Color(0xFFFAF9F5);
-    return Positioned.fill(child: ColoredBox(color: base));
+    return ColoredBox(color: base);
   }
 }
 
