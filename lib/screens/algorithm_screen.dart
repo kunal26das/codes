@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../models/algorithm.dart';
 import '../models/viz_run.dart';
@@ -22,6 +23,7 @@ class _AlgorithmScreenState extends State<AlgorithmScreen> {
   bool _playing = false;
   double _speed = 4;
   Timer? _timer;
+  final FocusNode _focusNode = FocusNode();
 
   static const _speeds = [0.5, 1.0, 2.0, 4.0];
 
@@ -34,7 +36,37 @@ class _AlgorithmScreenState extends State<AlgorithmScreen> {
   @override
   void dispose() {
     _timer?.cancel();
+    _focusNode.dispose();
     super.dispose();
+  }
+
+  /// Keyboard shortcuts: space toggles play, ← / → step, R restarts,
+  /// N rolls a new input, Home / End jump to the ends.
+  KeyEventResult _onKey(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
+      return KeyEventResult.ignored;
+    }
+    final key = event.logicalKey;
+    if (key == LogicalKeyboardKey.space) {
+      _toggle();
+    } else if (key == LogicalKeyboardKey.arrowRight) {
+      _step(1);
+    } else if (key == LogicalKeyboardKey.arrowLeft) {
+      _step(-1);
+    } else if (key == LogicalKeyboardKey.keyR) {
+      _restart();
+    } else if (key == LogicalKeyboardKey.keyN) {
+      _reroll();
+    } else if (key == LogicalKeyboardKey.home) {
+      _pause();
+      setState(() => _frame = 0);
+    } else if (key == LogicalKeyboardKey.end) {
+      _pause();
+      setState(() => _frame = _last);
+    } else {
+      return KeyEventResult.ignored;
+    }
+    return KeyEventResult.handled;
   }
 
   int get _last => _run.frameCount - 1;
@@ -94,6 +126,11 @@ class _AlgorithmScreenState extends State<AlgorithmScreen> {
       appBar: AppBar(
         title: Text(info.name, style: const TextStyle(fontWeight: FontWeight.w700)),
         actions: [
+          IconButton(
+            tooltip: 'Keyboard shortcuts',
+            icon: const Icon(Icons.keyboard_outlined, size: 20),
+            onPressed: () => _showShortcuts(context),
+          ),
           TextButton.icon(
             onPressed: _reroll,
             icon: const Icon(Icons.casino_outlined, size: 18),
@@ -102,8 +139,12 @@ class _AlgorithmScreenState extends State<AlgorithmScreen> {
           const SizedBox(width: 8),
         ],
       ),
-      body: SafeArea(
-        child: LayoutBuilder(
+      body: Focus(
+        focusNode: _focusNode,
+        autofocus: true,
+        onKeyEvent: _onKey,
+        child: SafeArea(
+          child: LayoutBuilder(
           builder: (context, constraints) {
             final wide = constraints.maxWidth >= 900;
             final player = _PlayerColumn(
@@ -158,6 +199,56 @@ class _AlgorithmScreenState extends State<AlgorithmScreen> {
           },
         ),
       ),
+      ),
+    );
+  }
+
+  void _showShortcuts(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (context) {
+        final theme = Theme.of(context);
+        Widget row(String keys, String action) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Row(
+                children: [
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: theme.dividerColor),
+                    ),
+                    child: Text(keys,
+                        style: theme.textTheme.labelMedium?.copyWith(
+                            color: theme.textTheme.bodyLarge?.color)),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                      child: Text(action, style: theme.textTheme.bodyMedium)),
+                ],
+              ),
+            );
+        return AlertDialog(
+          title: const Text('Keyboard shortcuts'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              row('Space', 'Play / pause'),
+              row('← / →', 'Step back / forward'),
+              row('Home / End', 'Jump to start / end'),
+              row('R', 'Restart from frame 1'),
+              row('N', 'Roll a new random input'),
+            ],
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Got it')),
+          ],
+        );
+      },
     );
   }
 }
@@ -207,56 +298,88 @@ class _PlayerColumn extends StatelessWidget {
         const SizedBox(height: 10),
         _Legend(category: category),
         const SizedBox(height: 10),
-        // Caption.
+        // Caption for the current step.
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(12),
+          constraints: const BoxConstraints(minHeight: 52),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
             color: theme.colorScheme.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
             children: [
-              Text('${frame + 1}/${run.frameCount}',
-                  style: theme.textTheme.labelMedium),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text('${frame + 1} / ${run.frameCount}',
+                    style: theme.textTheme.labelMedium?.copyWith(
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.w600)),
+              ),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(run.captionAt(frame), style: theme.textTheme.bodyMedium?.copyWith(color: theme.textTheme.bodyLarge?.color)),
+                child: Text(
+                  run.captionAt(frame),
+                  style: theme.textTheme.bodyMedium
+                      ?.copyWith(color: theme.textTheme.bodyLarge?.color),
+                ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 6),
-        Slider(
-          value: frame.toDouble().clamp(0, last.toDouble()),
-          min: 0,
-          max: last == 0 ? 1 : last.toDouble(),
-          divisions: last == 0 ? null : last,
-          onChanged: onSeek,
+        const SizedBox(height: 4),
+        SliderTheme(
+          data: SliderTheme.of(context).copyWith(
+            overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
+            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
+          ),
+          child: Slider(
+            value: frame.toDouble().clamp(0, last.toDouble()),
+            min: 0,
+            max: last == 0 ? 1 : last.toDouble(),
+            divisions: last == 0 ? null : last,
+            label: '${frame + 1}',
+            onChanged: onSeek,
+          ),
         ),
+        const SizedBox(height: 2),
         Row(
           children: [
             IconButton(
-              tooltip: 'Restart',
+              tooltip: 'Restart  (R)',
               onPressed: onRestart,
               icon: const Icon(Icons.replay_rounded),
             ),
             IconButton(
-              tooltip: 'Step back',
-              onPressed: () => onStep(-1),
+              tooltip: 'Step back  (←)',
+              onPressed: frame == 0 ? null : () => onStep(-1),
               icon: const Icon(Icons.skip_previous_rounded),
             ),
+            const SizedBox(width: 2),
             FilledButton(
               onPressed: onToggle,
               style: FilledButton.styleFrom(
                 shape: const CircleBorder(),
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.all(15),
               ),
-              child: Icon(playing ? Icons.pause_rounded : Icons.play_arrow_rounded),
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 150),
+                transitionBuilder: (c, a) =>
+                    ScaleTransition(scale: a, child: c),
+                child: Icon(
+                  playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                  key: ValueKey(playing),
+                ),
+              ),
             ),
+            const SizedBox(width: 2),
             IconButton(
-              tooltip: 'Step forward',
-              onPressed: () => onStep(1),
+              tooltip: 'Step forward  (→)',
+              onPressed: frame >= last ? null : () => onStep(1),
               icon: const Icon(Icons.skip_next_rounded),
             ),
             const Spacer(),
@@ -465,14 +588,6 @@ class _DetailsPanel extends StatelessWidget {
             Pill(text: 'Time  ${info.timeComplexity}', color: info.category.color, icon: Icons.timer_outlined),
             Pill(text: 'Space  ${info.spaceComplexity}', color: info.category.color, icon: Icons.memory_rounded),
           ],
-        ),
-        const SizedBox(height: 18),
-        Text('In the original repo', style: theme.textTheme.titleMedium),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [for (final lang in info.originalSources) Pill(text: lang)],
         ),
       ],
     );
