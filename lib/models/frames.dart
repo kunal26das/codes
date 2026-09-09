@@ -220,16 +220,23 @@ class PascalFrame {
   final String caption;
 }
 
-/// A weighted, undirected edge in a graph.
+/// A weighted edge in a graph, undirected unless constructed as directed.
 @immutable
 class GraphEdge {
-  const GraphEdge(this.a, this.b, this.w);
+  const GraphEdge(this.a, this.b, this.w) : directed = false;
+  const GraphEdge.directed(this.a, this.b, this.w) : directed = true;
   final int a;
   final int b;
   final int w;
+  final bool directed;
 
-  /// Order-independent identifier so an edge matches regardless of endpoint order.
-  int get key => a < b ? a * 100 + b : b * 100 + a;
+  /// Undirected edges retain their order-independent IDs. Directed IDs encode
+  /// the ordered pair in a separate (negative) namespace.
+  int get key => directed
+      ? -((a + b) * (a + b + 1) ~/ 2 + b + 1)
+      : a < b
+      ? a * 100 + b
+      : b * 100 + a;
 }
 
 /// A snapshot of a graph algorithm (e.g. Prim's MST).
@@ -265,13 +272,17 @@ class GraphRun {
     required this.edges,
     required this.frames,
     this.directed = false,
-  });
+    bool? weighted,
+    this.activeEdgesOnly = false,
+  }) : weighted = weighted ?? !directed;
 
   final List<String> nodeLabels;
   final List<List<double>> positions;
   final List<GraphEdge> edges;
   final List<GraphFrame> frames;
   final bool directed;
+  final bool weighted;
+  final bool activeEdgesOnly;
 }
 
 /// A snapshot of a matrix operation (A op B = C) being computed cell by cell.
@@ -460,7 +471,11 @@ class TextFrame {
 /// A node in a linked-list snapshot.
 @immutable
 class LinkedNode {
-  const LinkedNode({required this.value, this.highlight = false, this.fading = false});
+  const LinkedNode({
+    required this.value,
+    this.highlight = false,
+    this.fading = false,
+  });
   final int value;
   final bool highlight; // the node just touched
   final bool fading; // a node being removed

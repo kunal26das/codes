@@ -20,8 +20,9 @@ class Glass {
   /// refraction reading as clear glass rather than a painted card.
   static Color tint(BuildContext context, {double opacity = 0.18}) {
     final dark = Theme.of(context).brightness == Brightness.dark;
-    return (dark ? const Color(0xFF2A2927) : Colors.white)
-        .withValues(alpha: opacity);
+    return (dark ? const Color(0xFF2A2927) : Colors.white).withValues(
+      alpha: opacity,
+    );
   }
 
   /// Default settings for a resting pane.
@@ -71,10 +72,7 @@ class GlassPanel extends StatelessWidget {
     final glass = LiquidGlass.withOwnLayer(
       shape: LiquidRoundedSuperellipse(borderRadius: radius),
       settings: settings ?? Glass.settings(context),
-      child: Padding(
-        padding: padding ?? EdgeInsets.zero,
-        child: child,
-      ),
+      child: Padding(padding: padding ?? EdgeInsets.zero, child: child),
     );
     if (boxShadow == null) return glass;
     return DecoratedBox(
@@ -183,56 +181,62 @@ class _HoverCardState extends State<HoverCard> {
     return Semantics(
       button: true,
       label: widget.semanticLabel,
-      child: LayoutBuilder(builder: (context, constraints) {
-        _size = constraints.biggest;
-        return MouseRegion(
-          cursor: SystemMouseCursors.click,
-        onEnter: (_) => setState(() => _hover = true),
-          onHover: _track,
-          onExit: (_) => setState(() {
-            _hover = false;
-            _lightAngle = -0.35 * math.pi;
-          }),
-          child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
-          curve: Curves.easeOut,
-          transform: Matrix4.translationValues(0, _hover ? -3 : 0, 0),
-            child: GlassPanel(
-              radius: 22,
-              settings: Glass.settings(
-                context,
-                // Hover "thickens" the glass and tints it toward the accent —
-                // the shader lenses the backdrop more strongly — and the
-                // highlight tilts toward the pointer.
-                thickness: _hover ? 22 : 14,
-                lightIntensity: _hover ? 1.0 : 0.8,
-                lightAngle: _lightAngle,
-                tintColor: _hover
-                    ? accent.withValues(alpha: 0.16)
-                    : Glass.tint(context),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: (_hover ? accent : Colors.black)
-                      .withValues(alpha: _hover ? 0.22 : 0.10),
-                  blurRadius: _hover ? 28 : 16,
-                  offset: Offset(0, _hover ? 12 : 6),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          _size = constraints.biggest;
+          return MouseRegion(
+            cursor: SystemMouseCursors.click,
+            onEnter: (_) => setState(() => _hover = true),
+            onHover: _track,
+            onExit: (_) => setState(() {
+              _hover = false;
+              _lightAngle = -0.35 * math.pi;
+            }),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 160),
+              curve: Curves.easeOut,
+              transform: Matrix4.translationValues(0, _hover ? -3 : 0, 0),
+              child: GlassPanel(
+                radius: 22,
+                settings: Glass.settings(
+                  context,
+                  // Hover "thickens" the glass and tints it toward the accent —
+                  // the shader lenses the backdrop more strongly — and the
+                  // highlight tilts toward the pointer.
+                  thickness: _hover ? 22 : 14,
+                  lightIntensity: _hover ? 1.0 : 0.8,
+                  lightAngle: _lightAngle,
+                  tintColor: _hover
+                      ? accent.withValues(alpha: 0.16)
+                      : Glass.tint(context),
                 ),
-              ],
-              child: Material(
-                type: MaterialType.transparency,
-                child: InkWell(
-                  onTap: widget.onTap,
-                  borderRadius: BorderRadius.circular(22),
-                  hoverColor: accent.withValues(alpha: 0.04),
-                  splashColor: accent.withValues(alpha: 0.10),
-                  child: Padding(padding: widget.padding, child: widget.child),
+                boxShadow: [
+                  BoxShadow(
+                    color: (_hover ? accent : Colors.black).withValues(
+                      alpha: _hover ? 0.22 : 0.10,
+                    ),
+                    blurRadius: _hover ? 28 : 16,
+                    offset: Offset(0, _hover ? 12 : 6),
+                  ),
+                ],
+                child: Material(
+                  type: MaterialType.transparency,
+                  child: InkWell(
+                    onTap: widget.onTap,
+                    borderRadius: BorderRadius.circular(22),
+                    hoverColor: accent.withValues(alpha: 0.04),
+                    splashColor: accent.withValues(alpha: 0.10),
+                    child: Padding(
+                      padding: widget.padding,
+                      child: widget.child,
+                    ),
+                  ),
                 ),
               ),
             ),
-          ),
-        );
-      }),
+          );
+        },
+      ),
     );
   }
 }
@@ -269,7 +273,11 @@ class Pill extends StatelessWidget {
             child: Text(
               text,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: c, fontSize: 12, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                color: c,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
@@ -293,10 +301,15 @@ class LegendDot extends StatelessWidget {
         Container(
           width: 12,
           height: 12,
-          decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(3)),
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(3),
+          ),
         ),
         const SizedBox(width: 6),
-        Text(label, style: Theme.of(context).textTheme.bodySmall),
+        Flexible(
+          child: Text(label, style: Theme.of(context).textTheme.bodySmall),
+        ),
       ],
     );
   }

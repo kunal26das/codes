@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import '../models/frames.dart';
 
 // Shared 3-level game tree: root (MAX) → 3 children (MIN) → 3 leaves each.
@@ -113,50 +115,133 @@ List<GTreeFrame> alphaBeta() {
   return frames;
 }
 
-/// Monte-Carlo Tree Search — repeatedly select a promising node, expand, run a
-/// random rollout, and back-propagate the result, shown as wins/visits.
-List<GTreeFrame> monteCarlo() {
-  // Root with three move children; track wins/visits.
-  final wins = List<int>.filled(3, 0);
-  final visits = List<int>.filled(3, 0);
-  // Deterministic pseudo-rollouts (precomputed outcomes per pick).
-  const rollouts = [1, 1, 0, 1, 0, 1, 1, 1, 0, 1];
-  const picks = [0, 1, 2, 0, 1, 0, 2, 0, 1, 0];
+class _MctsNode {
+  _MctsNode({required this.id, required this.stones, required this.rootToMove, this.move})
+      : untried = [for (var take = 1; take <= 2 && take <= stones; take++) take];
 
-  GTreeFrame snap(String caption, {int? hot}) {
-    var rv = 0, rw = 0;
-    for (var i = 0; i < 3; i++) {
-      rv += visits[i];
-      rw += wins[i];
+  final int id;
+  final int stones;
+  final bool rootToMove;
+  final int? move;
+  final List<int> untried;
+  final children = <_MctsNode>[];
+  int wins = 0; // Always counted from the root player's perspective.
+  int visits = 0;
+}
+
+/// MCTS for a take-away game: start with four stones, take one or two per turn,
+/// and win by taking the last stone. UCT selects moves, one child is expanded,
+/// random legal moves finish the game, and the result updates the whole path.
+List<GTreeFrame> monteCarlo({int seed = 17, int iterations = 32}) {
+  if (iterations < 1) throw RangeError.range(iterations, 1, null, 'iterations');
+  final rng = Random(seed);
+  final root = _MctsNode(id: 0, stones: 4, rootToMove: true);
+  final nodes = <_MctsNode>[root];
+
+  GTreeFrame snap(String caption, {Set<int> path = const {}, int? hot, bool completed = false}) => GTreeFrame(
+        nodes: [
+          for (final node in nodes)
+            GTreeNode(
+              id: node.id,
+              label: '${node.wins}/${node.visits}',
+              children: [for (final child in node.children) child.id],
+              state: completed && path.contains(node.id)
+                  ? GNodeState.good
+                  : hot == node.id
+                      ? GNodeState.highlight
+                      : path.contains(node.id)
+                          ? GNodeState.active
+                          : GNodeState.normal,
+              edgeLabel: node.move == null ? null : 'take ${node.move}',
+            ),
+        ],
+        caption: caption,
+      );
+
+  _MctsNode selectChild(_MctsNode node) {
+    var best = node.children.first;
+    var bestScore = double.negativeInfinity;
+    for (final child in node.children) {
+      final winRate = child.visits == 0 ? 0.0 : child.wins / child.visits;
+      // Opponent turns prefer our losses. Exploration applies to both players.
+      final exploitation = node.rootToMove ? winRate : 1 - winRate;
+      final score = child.visits == 0
+          ? double.infinity
+          : exploitation + sqrt(2 * log(node.visits) / child.visits);
+      if (score > bestScore) {
+        best = child;
+        bestScore = score;
+      }
     }
-    return GTreeFrame(
-      nodes: [
-        GTreeNode(id: 0, label: '$rw/$rv', children: const [1, 2, 3], state: GNodeState.good),
-        for (var c = 0; c < 3; c++)
-          GTreeNode(
-            id: 1 + c,
-            label: '${wins[c]}/${visits[c]}',
-            children: const [],
-            state: hot == c ? GNodeState.highlight : GNodeState.normal,
-            edgeLabel: 'm$c',
-          ),
-      ],
-      caption: caption,
-    );
+    return best;
   }
 
-  final frames = <GTreeFrame>[snap('MCTS: each child shows wins/visits; balance exploration & exploitation.')];
-  for (var i = 0; i < picks.length; i++) {
-    final c = picks[i];
-    visits[c]++;
-    wins[c] += rollouts[i];
-    frames.add(snap('Iteration ${i + 1}: roll out move $c → ${rollouts[i] == 1 ? 'win' : 'loss'}.', hot: c));
+  final frames = <GTreeFrame>[
+    snap('Four stones: take 1 or 2; taking the last wins. Every node shows your wins/visits.'),
+  ];
+  for (var iteration = 1; iteration <= iterations; iteration++) {
+    var node = root;
+    final path = <_MctsNode>[root];
+    while (node.stones > 0 && node.untried.isEmpty) {
+      node = selectChild(node);
+      path.add(node);
+    }
+    frames.add(snap(
+      'Iteration $iteration — select by UCT: balance the current player’s win rate with exploration.',
+      path: {for (final step in path) step.id},
+      hot: node.id,
+    ));
+
+    if (node.untried.isNotEmpty) {
+      final move = node.untried.removeAt(rng.nextInt(node.untried.length));
+      final child = _MctsNode(id: nodes.length, stones: node.stones - move, rootToMove: !node.rootToMove, move: move);
+      node.children.add(child);
+      nodes.add(child);
+      node = child;
+      path.add(node);
+      frames.add(snap(
+        'Expand take $move: ${node.stones} stones remain${node.stones == 0 ? ' — game over' : node.rootToMove ? '; you play next' : '; opponent plays next'}.',
+        path: {for (final step in path) step.id},
+        hot: node.id,
+      ));
+    }
+
+    var stones = node.stones;
+    var rootToMove = node.rootToMove;
+    final rollout = <int>[];
+    while (stones > 0) {
+      final move = 1 + rng.nextInt(min(2, stones));
+      rollout.add(move);
+      stones -= move;
+      rootToMove = !rootToMove;
+    }
+    final won = !rootToMove; // The previous player took the last stone.
+    frames.add(snap(
+      '${rollout.isEmpty ? 'Terminal state' : 'Random rollout takes ${rollout.join(' → ')}'}: ${won ? 'you win' : 'opponent wins'}.',
+      path: {for (final step in path) step.id},
+      hot: node.id,
+    ));
+
+    for (final step in path) {
+      step.visits++;
+      if (won) step.wins++;
+    }
+    frames.add(snap(
+      'Back-propagate your ${won ? 'win' : 'loss'} through ${path.length} nodes; $iteration simulations complete.',
+      path: {for (final step in path) step.id},
+      completed: true,
+    ));
   }
-  var best = 0;
-  for (var c = 1; c < 3; c++) {
-    if (visits[c] > visits[best]) best = c;
+
+  var best = root.children.first;
+  for (final child in root.children.skip(1)) {
+    if (child.visits > best.visits) best = child;
   }
-  frames.add(snap('Most-visited move ($best) is chosen as best.', hot: best));
+  frames.add(snap(
+    'Choose take ${best.move}: the most-visited move (${best.visits} visits, ${best.wins} wins).',
+    path: {root.id, best.id},
+    completed: true,
+  ));
   return frames;
 }
 

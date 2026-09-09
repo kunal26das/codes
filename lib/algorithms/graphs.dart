@@ -152,13 +152,13 @@ const _dagPositions = [
   [0.90, 0.72],
 ];
 const _dagEdges = [
-  GraphEdge(0, 2, 0), // A→C
-  GraphEdge(0, 3, 0), // A→D
-  GraphEdge(1, 3, 0), // B→D
-  GraphEdge(2, 4, 0), // C→E
-  GraphEdge(3, 4, 0), // D→E
-  GraphEdge(3, 5, 0), // D→F
-  GraphEdge(4, 5, 0), // E→F
+  GraphEdge.directed(0, 2, 0), // A→C
+  GraphEdge.directed(0, 3, 0), // A→D
+  GraphEdge.directed(1, 3, 0), // B→D
+  GraphEdge.directed(2, 4, 0), // C→E
+  GraphEdge.directed(3, 4, 0), // D→E
+  GraphEdge.directed(3, 5, 0), // D→F
+  GraphEdge.directed(4, 5, 0), // E→F
 ];
 
 /// Topological sort (Kahn's algorithm): repeatedly remove a node that has no
@@ -262,11 +262,11 @@ const _cyclePositions = [
   [0.90, 0.55],
 ];
 const _cycleEdges = [
-  GraphEdge(0, 1, 0), // A→B
-  GraphEdge(1, 2, 0), // B→C
-  GraphEdge(2, 3, 0), // C→D
-  GraphEdge(3, 1, 0), // D→B  (back edge → cycle)
-  GraphEdge(2, 4, 0), // C→E
+  GraphEdge.directed(0, 1, 0), // A→B
+  GraphEdge.directed(1, 2, 0), // B→C
+  GraphEdge.directed(2, 3, 0), // C→D
+  GraphEdge.directed(3, 1, 0), // D→B  (back edge → cycle)
+  GraphEdge.directed(2, 4, 0), // C→E
 ];
 
 /// Cycle detection in a directed graph via DFS: a "back edge" to a vertex still
@@ -292,7 +292,7 @@ GraphRun cycleDetection() {
     state[u] = 1;
     frames.add(GraphFrame(inTree: finished(), treeEdges: {...treeEdges}, current: u, caption: 'Enter ${_cycleLabels[u]} (now on the stack).'));
     for (final v in adj[u]) {
-      final e = GraphEdge(u, v, 0);
+      final e = GraphEdge.directed(u, v, 0);
       if (state[v] == 1) {
         found = true;
         backEdge = e.key;
@@ -336,16 +336,16 @@ const _bfPositions = [
   [0.72, 0.82],
 ];
 const _bfEdges = [
-  GraphEdge(0, 1, 6),
-  GraphEdge(0, 2, 7),
-  GraphEdge(1, 2, 8),
-  GraphEdge(1, 3, 5),
-  GraphEdge(1, 4, -4),
-  GraphEdge(2, 3, -3),
-  GraphEdge(2, 4, 9),
-  GraphEdge(3, 1, -2),
-  GraphEdge(4, 0, 2),
-  GraphEdge(4, 3, 7),
+  GraphEdge.directed(0, 1, 6),
+  GraphEdge.directed(0, 2, 7),
+  GraphEdge.directed(1, 2, 8),
+  GraphEdge.directed(1, 3, 5),
+  GraphEdge.directed(1, 4, -4),
+  GraphEdge.directed(2, 3, -3),
+  GraphEdge.directed(2, 4, 9),
+  GraphEdge.directed(3, 1, -2),
+  GraphEdge.directed(4, 0, 2),
+  GraphEdge.directed(4, 3, 7),
 ];
 
 const _bfInf = 1 << 29;
@@ -381,5 +381,5 @@ GraphRun bellmanFord() {
     dist: distMap(),
     caption: 'Shortest distances from ${_bfLabels[0]}: ${[for (var i = 0; i < n; i++) '${_bfLabels[i]}=${dist[i]}'].join(', ')}.',
   ));
-  return GraphRun(nodeLabels: _bfLabels, positions: _bfPositions, edges: _bfEdges, directed: true, frames: frames);
+  return GraphRun(nodeLabels: _bfLabels, positions: _bfPositions, edges: _bfEdges, directed: true, weighted: true, frames: frames);
 }

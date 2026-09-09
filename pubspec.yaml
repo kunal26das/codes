@@ -4,14 +4,16 @@ publish_to: "none"
 version: 1.0.0+1
 
 environment:
-  sdk: ">=3.6.0 <4.0.0"
-  flutter: ">=3.27.0"
+  sdk: ">=3.9.0 <4.0.0"
+  flutter: ">=3.44.0"
 
 dependencies:
   flutter:
     sdk: flutter
   google_fonts: ^8.1.0
-  liquid_glass_renderer: ^0.2.0-dev.4
+  # Preserve native refraction while excluding Impeller-only shaders on web.
+  liquid_glass_renderer:
+    path: third_party/liquid_glass_renderer
 
 dev_dependencies:
   flutter_test:

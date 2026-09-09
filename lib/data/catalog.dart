@@ -1,5 +1,10 @@
 import 'dart:math';
 
+import 'dp_catalog.dart';
+import 'graph_catalog.dart';
+import 'geometry_catalog.dart';
+import 'sequence_catalog.dart';
+
 import '../algorithms/ai.dart';
 import '../algorithms/arrays.dart';
 import '../algorithms/backtracking.dart';
@@ -43,6 +48,12 @@ import '../visualizers/table_view.dart';
 import '../visualizers/tree_view.dart';
 import '../visualizers/trie_view.dart';
 import '../visualizers/tsp_view.dart';
+
+final _inputRandom = Random();
+
+// Keep the algorithm functions reproducible with explicit seeds, while each
+// player run gets a fresh starting point.
+int _newSeed() => _inputRandom.nextInt(1 << 30);
 
 List<int> _randomArray({int n = 16, int min = 8, int max = 99}) {
   final rng = Random();
@@ -1297,7 +1308,7 @@ final List<AlgorithmInfo> catalog = [
     timeComplexity: 'O(gen · pop · L)',
     spaceComplexity: 'O(pop · L)',
     originalSources: ['AI'],
-    create: () => _geneticRun(geneticAlgorithm()),
+    create: () => _geneticRun(geneticAlgorithm(seed: _newSeed())),
   ),
   AlgorithmInfo(
     id: 'ant-colony',
@@ -1313,7 +1324,7 @@ final List<AlgorithmInfo> catalog = [
     timeComplexity: 'O(iter · ants · n²)',
     spaceComplexity: 'O(n²)',
     originalSources: ['AI'],
-    create: () => _tspRun(antColony()),
+    create: () => _tspRun(antColony(seed: _newSeed())),
   ),
   AlgorithmInfo(
     id: 'particle-swarm',
@@ -1328,7 +1339,7 @@ final List<AlgorithmInfo> catalog = [
     timeComplexity: 'O(iter · particles)',
     spaceComplexity: 'O(particles)',
     originalSources: ['AI'],
-    create: () => _swarmRun(particleSwarm()),
+    create: () => _swarmRun(particleSwarm(seed: _newSeed())),
   ),
   AlgorithmInfo(
     id: 'simulated-annealing',
@@ -1344,7 +1355,7 @@ final List<AlgorithmInfo> catalog = [
     timeComplexity: 'O(steps · n)',
     spaceComplexity: 'O(n)',
     originalSources: ['AI'],
-    create: () => _tspRun(simulatedAnnealing()),
+    create: () => _tspRun(simulatedAnnealing(seed: _newSeed())),
   ),
   AlgorithmInfo(
     id: 'hill-climbing',
@@ -1359,7 +1370,7 @@ final List<AlgorithmInfo> catalog = [
     timeComplexity: 'O(steps)',
     spaceComplexity: 'O(1)',
     originalSources: ['AI'],
-    create: () => _swarmRun(hillClimbing()),
+    create: () => _swarmRun(hillClimbing(seed: _newSeed())),
   ),
   AlgorithmInfo(
     id: 'artificial-bee-colony',
@@ -1375,7 +1386,7 @@ final List<AlgorithmInfo> catalog = [
     timeComplexity: 'O(iter · sources)',
     spaceComplexity: 'O(sources)',
     originalSources: ['AI'],
-    create: () => _swarmRun(artificialBeeColony()),
+    create: () => _swarmRun(artificialBeeColony(seed: _newSeed())),
   ),
   AlgorithmInfo(
     id: 'firefly',
@@ -1390,7 +1401,7 @@ final List<AlgorithmInfo> catalog = [
     timeComplexity: 'O(iter · n²)',
     spaceComplexity: 'O(n)',
     originalSources: ['AI'],
-    create: () => _swarmRun(firefly()),
+    create: () => _swarmRun(firefly(seed: _newSeed())),
   ),
   AlgorithmInfo(
     id: 'cuckoo-search',
@@ -1405,7 +1416,7 @@ final List<AlgorithmInfo> catalog = [
     timeComplexity: 'O(iter · nests)',
     spaceComplexity: 'O(nests)',
     originalSources: ['AI'],
-    create: () => _swarmRun(cuckooSearch()),
+    create: () => _swarmRun(cuckooSearch(seed: _newSeed())),
   ),
   AlgorithmInfo(
     id: 'bitonic-sort', name: 'Bitonic Sort', category: AlgoCategory.sorting,
@@ -2119,9 +2130,9 @@ final List<AlgorithmInfo> catalog = [
   AlgorithmInfo(
     id: 'mcts', name: 'Monte-Carlo Tree Search', category: AlgoCategory.ai,
     blurb: 'Select, expand, simulate, back-propagate.',
-    description: 'MCTS builds a search tree by repeatedly selecting a promising node, expanding it, running a random rollout, and back-propagating the result as wins/visits — the engine behind modern game AIs.',
+    description: 'MCTS learns which move to play by selecting with UCT, expanding the tree, simulating random legal moves, and back-propagating the result. Here two players take 1 or 2 stones from a pile of 4; taking the last stone wins. Each node tracks wins for the starting player and total visits.',
     timeComplexity: 'O(iterations)', spaceComplexity: 'O(nodes)', originalSources: ['AI'],
-    create: () => _gtreeRun(monteCarlo()),
+    create: () => _gtreeRun(monteCarlo(seed: _newSeed())),
   ),
   AlgorithmInfo(
     id: 'ucs', name: 'Uniform Cost Search', category: AlgoCategory.ai,
@@ -2130,6 +2141,10 @@ final List<AlgorithmInfo> catalog = [
     timeComplexity: 'O(E log V)', spaceComplexity: 'O(V)', originalSources: ['AI'],
     create: () => _gtreeRun(uniformCostSearch()),
   ),
+  ...sequenceExtensions,
+  ...dpExtensions,
+  ...graphExtensions,
+  ...geometryExtensions,
 ];
 
 Map<AlgoCategory, List<AlgorithmInfo>> get catalogByCategory {

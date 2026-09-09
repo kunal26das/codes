@@ -177,33 +177,45 @@ List<StringMatchFrame> boyerMoore([String text = 'ABAAABCDABC', String pattern =
 List<StringMatchFrame> rabinKarp([String text = 'ABABACABAB', String pattern = 'ABABA']) {
   final n = text.length, m = pattern.length;
   const base = 256, mod = 101;
-  int hash(String s, int start, int len) {
-    var x = 0;
-    for (var i = 0; i < len; i++) {
-      x = (x * base + s.codeUnitAt(start + i)) % mod;
-    }
-    return x;
+  if (m == 0) {
+    return [StringMatchFrame(text: text, pattern: pattern, offset: 0, caption: 'The empty pattern matches at index 0.')];
+  }
+  if (m > n) {
+    return [StringMatchFrame(text: text, pattern: pattern, offset: 0, caption: 'The pattern is longer than the text — not found.')];
   }
 
-  final ph = hash(pattern, 0, m);
+  var ph = 0, th = 0, highPower = 1;
+  for (var i = 0; i < m; i++) {
+    ph = (ph * base + pattern.codeUnitAt(i)) % mod;
+    th = (th * base + text.codeUnitAt(i)) % mod;
+    if (i < m - 1) highPower = (highPower * base) % mod;
+  }
   final frames = <StringMatchFrame>[];
   for (var s = 0; s <= n - m; s++) {
-    final th = hash(text, s, m);
     frames.add(StringMatchFrame(
       text: text,
       pattern: pattern,
       offset: s,
-      matched: {for (var k = 0; k < m; k++) k},
       caption: 'Window [$s, ${s + m - 1}] hash $th vs pattern hash $ph.',
     ));
     if (th == ph) {
       var ok = true;
+      final matched = <int>{};
       for (var k = 0; k < m; k++) {
+        frames.add(StringMatchFrame(
+          text: text,
+          pattern: pattern,
+          offset: s,
+          compareIndex: k,
+          matched: {...matched},
+          caption: 'Hashes agree — verify character $k.',
+        ));
         if (text[s + k] != pattern[k]) {
           ok = false;
-          frames.add(StringMatchFrame(text: text, pattern: pattern, offset: s, mismatch: k, caption: 'Hashes match but characters differ at $k — spurious hit.'));
+          frames.add(StringMatchFrame(text: text, pattern: pattern, offset: s, mismatch: k, matched: {...matched}, caption: 'Hashes match but characters differ at $k — spurious hit.'));
           break;
         }
+        matched.add(k);
       }
       if (ok) {
         frames.add(StringMatchFrame(
@@ -218,6 +230,17 @@ List<StringMatchFrame> rabinKarp([String text = 'ABABACABAB', String pattern = '
       }
     } else {
       frames.add(StringMatchFrame(text: text, pattern: pattern, offset: s, caption: 'Hashes differ — no match here.'));
+    }
+    if (s < n - m) {
+      // Remove the outgoing high-order term, shift, and add the incoming unit.
+      // Dart's modulo normalizes negative values, keeping the hash in 0..100.
+      th = ((th - text.codeUnitAt(s) * highPower) * base + text.codeUnitAt(s + m)) % mod;
+      frames.add(StringMatchFrame(
+        text: text,
+        pattern: pattern,
+        offset: s + 1,
+        caption: 'Roll the hash: remove "${text[s]}", shift, add "${text[s + m]}" → $th.',
+      ));
     }
   }
   frames.add(StringMatchFrame(text: text, pattern: pattern, offset: 0, caption: 'Pattern not found.'));

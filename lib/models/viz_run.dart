@@ -10,9 +10,14 @@ class VizRun {
     required this.frameCount,
     required this.captionAt,
     required this.builder,
+    this.legend,
   });
 
   final int frameCount;
   final String Function(int index) captionAt;
   final Widget Function(BuildContext context, int index) builder;
+
+  /// Null uses category defaults; an empty list means the view labels its own
+  /// state. Individual visualizers can describe their actual colour roles.
+  final List<(Color, String)>? legend;
 }

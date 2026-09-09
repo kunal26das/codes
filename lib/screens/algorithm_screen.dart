@@ -122,97 +122,113 @@ class _AlgorithmScreenState extends State<AlgorithmScreen> {
   @override
   Widget build(BuildContext context) {
     final info = widget.info;
+    final compact = MediaQuery.sizeOf(context).width < 500;
     return Scaffold(
       backgroundColor: Colors.transparent,
       extendBodyBehindAppBar: true,
       appBar: AppBar(
+        toolbarHeight: compact ? 72 : kToolbarHeight,
         flexibleSpace: GlassPanel(
           radius: 0,
           settings: Glass.settings(context, thickness: 12, blur: 4),
           child: const SizedBox.expand(),
         ),
-        title: Text(info.name, style: const TextStyle(fontWeight: FontWeight.w700)),
+        title: Tooltip(
+          message: info.name,
+          excludeFromSemantics: true,
+          child: Text(
+            info.name,
+            maxLines: compact ? 2 : 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: compact ? 17 : null,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
         actions: [
           IconButton(
             tooltip: 'Keyboard shortcuts',
             icon: const Icon(Icons.keyboard_outlined, size: 20),
             onPressed: () => _showShortcuts(context),
           ),
-          TextButton.icon(
-            onPressed: _reroll,
-            icon: const Icon(Icons.casino_outlined, size: 18),
-            label: const Text('New input'),
-          ),
+          if (compact)
+            IconButton(
+              onPressed: _reroll,
+              tooltip: 'New input',
+              icon: const Icon(Icons.casino_outlined),
+            )
+          else
+            TextButton.icon(
+              onPressed: _reroll,
+              icon: const Icon(Icons.casino_outlined, size: 18),
+              label: const Text('New input'),
+            ),
           const SizedBox(width: 8),
         ],
       ),
       body: GlassScaffoldBackground(
-        accents: [
-          info.category.color,
-          AppColors.highlight,
-          AppColors.done,
-        ],
+        accents: [info.category.color, AppColors.highlight, AppColors.done],
         child: Focus(
           focusNode: _focusNode,
-        autofocus: true,
-        onKeyEvent: _onKey,
-        child: SafeArea(
-          child: LayoutBuilder(
-          builder: (context, constraints) {
-            final wide = constraints.maxWidth >= 900;
-            final player = _PlayerColumn(
-              run: _run,
-              frame: _frame,
-              playing: _playing,
-              speed: _speed,
-              speeds: _speeds,
-              category: info.category,
-              onToggle: _toggle,
-              onStep: _step,
-              onRestart: _restart,
-              onSeek: (v) {
-                _pause();
-                setState(() => _frame = v.round());
-              },
-              onSpeed: _setSpeed,
-            );
-            final details = _DetailsPanel(info: info);
-            if (wide) {
-              return Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 1700),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Expanded(child: player),
-                        const SizedBox(width: 20),
-                        SizedBox(
-                          width: 300,
-                          child: SingleChildScrollView(child: details),
+          autofocus: true,
+          onKeyEvent: _onKey,
+          child: SafeArea(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final wide = constraints.maxWidth >= 900;
+                final player = _PlayerColumn(
+                  visualizationHeight: wide
+                      ? null
+                      : (constraints.maxWidth < 500 ? 300 : 360),
+                  run: _run,
+                  frame: _frame,
+                  playing: _playing,
+                  speed: _speed,
+                  speeds: _speeds,
+                  category: info.category,
+                  onToggle: _toggle,
+                  onStep: _step,
+                  onRestart: _restart,
+                  onSeek: (v) {
+                    _pause();
+                    setState(() => _frame = v.round());
+                  },
+                  onSpeed: _setSpeed,
+                );
+                final details = _DetailsPanel(info: info);
+                if (wide) {
+                  return Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 1700),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Expanded(child: player),
+                            const SizedBox(width: 20),
+                            SizedBox(
+                              width: 300,
+                              child: SingleChildScrollView(child: details),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
+                  );
+                }
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [player, const SizedBox(height: 20), details],
                   ),
-                ),
-              );
-            }
-            return SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  SizedBox(height: 480, child: player),
-                  const SizedBox(height: 20),
-                  details,
-                ],
-              ),
-            );
-          },
+                );
+              },
+            ),
+          ),
         ),
-      ),
-      ),
       ),
     );
   }
@@ -223,27 +239,28 @@ class _AlgorithmScreenState extends State<AlgorithmScreen> {
       builder: (context) {
         final theme = Theme.of(context);
         Widget row(String keys, String action) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              child: Row(
-                children: [
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: theme.dividerColor),
-                    ),
-                    child: Text(keys,
-                        style: theme.textTheme.labelMedium?.copyWith(
-                            color: theme.textTheme.bodyLarge?.color)),
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: theme.dividerColor),
+                ),
+                child: Text(
+                  keys,
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: theme.textTheme.bodyLarge?.color,
                   ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                      child: Text(action, style: theme.textTheme.bodyMedium)),
-                ],
+                ),
               ),
-            );
+              const SizedBox(width: 14),
+              Expanded(child: Text(action, style: theme.textTheme.bodyMedium)),
+            ],
+          ),
+        );
         return AlertDialog(
           title: const Text('Keyboard shortcuts'),
           content: Column(
@@ -258,8 +275,9 @@ class _AlgorithmScreenState extends State<AlgorithmScreen> {
           ),
           actions: [
             TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Got it')),
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Got it'),
+            ),
           ],
         );
       },
@@ -269,6 +287,7 @@ class _AlgorithmScreenState extends State<AlgorithmScreen> {
 
 class _PlayerColumn extends StatelessWidget {
   const _PlayerColumn({
+    this.visualizationHeight,
     required this.run,
     required this.frame,
     required this.playing,
@@ -283,6 +302,7 @@ class _PlayerColumn extends StatelessWidget {
   });
 
   final VizRun run;
+  final double? visualizationHeight;
   final int frame;
   final bool playing;
   final double speed;
@@ -298,19 +318,24 @@ class _PlayerColumn extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final last = run.frameCount - 1;
+    final visualization = Card(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: run.builder(context, frame),
+      ),
+    );
     return Column(
+      mainAxisSize: visualizationHeight == null
+          ? MainAxisSize.max
+          : MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Expanded(
-          child: Card(
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: run.builder(context, frame),
-            ),
-          ),
-        ),
+        if (visualizationHeight == null)
+          Expanded(child: visualization)
+        else
+          SizedBox(height: visualizationHeight, child: visualization),
         const SizedBox(height: 10),
-        _Legend(category: category),
+        _Legend(category: category, entries: run.legend),
         const SizedBox(height: 10),
         // Caption for the current step.
         Container(
@@ -329,17 +354,22 @@ class _PlayerColumn extends StatelessWidget {
                   color: theme.colorScheme.primary.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(6),
                 ),
-                child: Text('${frame + 1} / ${run.frameCount}',
-                    style: theme.textTheme.labelMedium?.copyWith(
-                        color: theme.colorScheme.primary,
-                        fontWeight: FontWeight.w600)),
+                child: Text(
+                  '${frame + 1} / ${run.frameCount}',
+                  key: const ValueKey('player-frame-counter'),
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   run.captionAt(frame),
-                  style: theme.textTheme.bodyMedium
-                      ?.copyWith(color: theme.textTheme.bodyLarge?.color),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.textTheme.bodyLarge?.color,
+                  ),
                 ),
               ),
             ],
@@ -361,51 +391,68 @@ class _PlayerColumn extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 2),
-        Row(
+        Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 16,
+          runSpacing: 8,
           children: [
-            IconButton(
-              tooltip: 'Restart  (R)',
-              onPressed: onRestart,
-              icon: const Icon(Icons.replay_rounded),
-            ),
-            IconButton(
-              tooltip: 'Step back  (←)',
-              onPressed: frame == 0 ? null : () => onStep(-1),
-              icon: const Icon(Icons.skip_previous_rounded),
-            ),
-            const SizedBox(width: 2),
-            FilledButton(
-              onPressed: onToggle,
-              style: FilledButton.styleFrom(
-                shape: const CircleBorder(),
-                padding: const EdgeInsets.all(15),
-              ),
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 150),
-                transitionBuilder: (c, a) =>
-                    ScaleTransition(scale: a, child: c),
-                child: Icon(
-                  playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                  key: ValueKey(playing),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  tooltip: 'Restart  (R)',
+                  onPressed: onRestart,
+                  icon: const Icon(Icons.replay_rounded),
                 ),
-              ),
-            ),
-            const SizedBox(width: 2),
-            IconButton(
-              tooltip: 'Step forward  (→)',
-              onPressed: frame >= last ? null : () => onStep(1),
-              icon: const Icon(Icons.skip_next_rounded),
-            ),
-            const Spacer(),
-            for (final s in speeds)
-              Padding(
-                padding: const EdgeInsets.only(left: 4),
-                child: _SpeedChip(
-                  label: '${s == s.roundToDouble() ? s.toInt() : s}×',
-                  selected: s == speed,
-                  onTap: () => onSpeed(s),
+                IconButton(
+                  tooltip: 'Step back  (←)',
+                  onPressed: frame == 0 ? null : () => onStep(-1),
+                  icon: const Icon(Icons.skip_previous_rounded),
                 ),
-              ),
+                const SizedBox(width: 2),
+                Tooltip(
+                  message: playing ? 'Pause (Space)' : 'Play (Space)',
+                  child: FilledButton(
+                    key: const ValueKey('player-play-pause'),
+                    onPressed: onToggle,
+                    style: FilledButton.styleFrom(
+                      shape: const CircleBorder(),
+                      padding: const EdgeInsets.all(15),
+                    ),
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 150),
+                      transitionBuilder: (c, a) =>
+                          ScaleTransition(scale: a, child: c),
+                      child: Icon(
+                        playing
+                            ? Icons.pause_rounded
+                            : Icons.play_arrow_rounded,
+                        key: ValueKey(playing),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 2),
+                IconButton(
+                  tooltip: 'Step forward  (→)',
+                  onPressed: frame >= last ? null : () => onStep(1),
+                  icon: const Icon(Icons.skip_next_rounded),
+                ),
+              ],
+            ),
+            Wrap(
+              spacing: 4,
+              runSpacing: 4,
+              children: [
+                for (final s in speeds)
+                  _SpeedChip(
+                    label: '${s == s.roundToDouble() ? s.toInt() : s}×',
+                    selected: s == speed,
+                    onTap: () => onSpeed(s),
+                  ),
+              ],
+            ),
           ],
         ),
       ],
@@ -414,7 +461,11 @@ class _PlayerColumn extends StatelessWidget {
 }
 
 class _SpeedChip extends StatelessWidget {
-  const _SpeedChip({required this.label, required this.selected, required this.onTap});
+  const _SpeedChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
   final String label;
   final bool selected;
   final VoidCallback onTap;
@@ -431,7 +482,9 @@ class _SpeedChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: selected ? c.withValues(alpha: 0.14) : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: selected ? c.withValues(alpha: 0.4) : theme.dividerColor),
+          border: Border.all(
+            color: selected ? c.withValues(alpha: 0.4) : theme.dividerColor,
+          ),
         ),
         child: Text(
           label,
@@ -447,12 +500,18 @@ class _SpeedChip extends StatelessWidget {
 }
 
 class _Legend extends StatelessWidget {
-  const _Legend({required this.category});
+  const _Legend({required this.category, this.entries});
   final AlgoCategory category;
+  final List<(Color, String)>? entries;
 
   @override
   Widget build(BuildContext context) {
-    final dots = _dotsFor(category);
+    final dots = entries == null
+        ? _dotsFor(category)
+        : [
+            for (final (color, label) in entries!)
+              LegendDot(color: color, label: label),
+          ];
     return Wrap(spacing: 16, runSpacing: 8, children: dots);
   }
 
@@ -503,10 +562,10 @@ class _Legend extends StatelessWidget {
         ];
       case AlgoCategory.graphs:
         return const [
-          LegendDot(color: AppColors.done, label: 'In tree'),
-          LegendDot(color: AppColors.active, label: 'Newest node'),
+          LegendDot(color: AppColors.done, label: 'Selected node'),
+          LegendDot(color: AppColors.active, label: 'Current node'),
           LegendDot(color: AppColors.compare, label: 'Candidate edge'),
-          LegendDot(color: AppColors.clayBright, label: 'Tree edge'),
+          LegendDot(color: AppColors.clayBright, label: 'Selected edge'),
         ];
       case AlgoCategory.strings:
         return const [
@@ -584,8 +643,14 @@ class _DetailsPanel extends StatelessWidget {
           children: [
             Icon(info.category.icon, size: 16, color: info.category.color),
             const SizedBox(width: 6),
-            Text(info.category.label,
-                style: theme.textTheme.titleSmall?.copyWith(color: info.category.color)),
+            Flexible(
+              child: Text(
+                info.category.label,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  color: info.category.color,
+                ),
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 10),
@@ -599,8 +664,16 @@ class _DetailsPanel extends StatelessWidget {
           spacing: 8,
           runSpacing: 8,
           children: [
-            Pill(text: 'Time  ${info.timeComplexity}', color: info.category.color, icon: Icons.timer_outlined),
-            Pill(text: 'Space  ${info.spaceComplexity}', color: info.category.color, icon: Icons.memory_rounded),
+            Pill(
+              text: 'Time  ${info.timeComplexity}',
+              color: info.category.color,
+              icon: Icons.timer_outlined,
+            ),
+            Pill(
+              text: 'Space  ${info.spaceComplexity}',
+              color: info.category.color,
+              icon: Icons.memory_rounded,
+            ),
           ],
         ),
       ],

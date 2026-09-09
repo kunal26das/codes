@@ -670,16 +670,59 @@ List<ArrayFrame> stoogeSort(List<int> input) {
 List<ArrayFrame> bstSort(List<int> input) {
   final a = [...input];
   final frames = <ArrayFrame>[ArrayFrame(values: [...a], caption: 'Insert every element into a BST, then read it in-order.')];
-  final sorted = [...a]..sort(); // in-order traversal of the BST
+  // Nodes keep their original array indices so insertion comparisons can be
+  // highlighted in the input. Equal values go right, preserving duplicates.
+  final left = List<int>.filled(a.length, -1);
+  final right = List<int>.filled(a.length, -1);
+  if (a.isNotEmpty) {
+    frames.add(ArrayFrame(values: [...a], active: {0}, caption: 'Insert ${a[0]} as the root.'));
+  }
+  for (var i = 1; i < a.length; i++) {
+    var node = 0;
+    while (true) {
+      final goLeft = a[i] < a[node];
+      frames.add(ArrayFrame(
+        values: [...a],
+        active: {i},
+        comparing: {node},
+        caption: '${a[i]} ${goLeft ? '<' : '≥'} ${a[node]} — follow the ${goLeft ? 'left' : 'right'} branch.',
+      ));
+      final child = goLeft ? left[node] : right[node];
+      if (child == -1) {
+        if (goLeft) {
+          left[node] = i;
+        } else {
+          right[node] = i;
+        }
+        frames.add(ArrayFrame(
+          values: [...a],
+          active: {i},
+          caption: 'Insert ${a[i]} as the ${goLeft ? 'left' : 'right'} child of ${a[node]}.',
+        ));
+        break;
+      }
+      node = child;
+    }
+  }
+
+  // An explicit stack also handles a skewed tree without recursive calls.
   final out = <int>[];
-  for (var i = 0; i < sorted.length; i++) {
-    out.add(sorted[i]);
+  final stack = <int>[];
+  var node = a.isEmpty ? -1 : 0;
+  while (node != -1 || stack.isNotEmpty) {
+    while (node != -1) {
+      stack.add(node);
+      node = left[node];
+    }
+    node = stack.removeLast();
+    out.add(a[node]);
     frames.add(ArrayFrame(
       values: [...out],
       active: {out.length - 1},
       done: {for (var k = 0; k < out.length - 1; k++) k},
-      caption: 'In-order visit yields the next smallest: ${sorted[i]}.',
+      caption: 'In-order visit yields the next smallest: ${a[node]}.',
     ));
+    node = right[node];
   }
   frames.add(ArrayFrame(values: [...out], done: {for (var k = 0; k < out.length; k++) k}, caption: 'Sorted via BST in-order traversal.'));
   return frames;

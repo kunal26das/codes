@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/frames.dart';
 import '../theme/app_colors.dart';
+import 'zoomable_canvas.dart';
 
 /// Renders one [TableFrame] of a dynamic-programming table, with a header row
 /// and column, computed cells, the active cell, and the cells it references.
@@ -13,13 +14,29 @@ class TableView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return CustomPaint(
-          size: Size(constraints.maxWidth, constraints.maxHeight),
-          painter: _TablePainter(frame: frame, dark: dark),
-        );
-      },
+    var cellWidth = 48.0;
+    for (final text in [
+      ...frame.rowHeader,
+      ...frame.colHeader,
+      for (final row in frame.cells)
+        for (final value in row) value >= (1 << 28) ? '∞' : '$value',
+    ]) {
+      final label = TextPainter(
+        text: TextSpan(
+          text: text,
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      if (label.width + 16 > cellWidth) cellWidth = label.width + 16;
+      label.dispose();
+    }
+    return ZoomableCanvas(
+      minimumSize: Size((frame.cols + 1) * cellWidth, (frame.rows + 1) * 42),
+      builder: (size) => CustomPaint(
+        size: size,
+        painter: _TablePainter(frame: frame, dark: dark),
+      ),
     );
   }
 }
@@ -43,7 +60,13 @@ class _TablePainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1;
 
-    void label(String s, double x, double y, {Color? color, FontWeight fw = FontWeight.w500}) {
+    void label(
+      String s,
+      double x,
+      double y, {
+      Color? color,
+      FontWeight fw = FontWeight.w500,
+    }) {
       final tp = TextPainter(
         text: TextSpan(
           text: s,
@@ -55,7 +78,11 @@ class _TablePainter extends CustomPainter {
         ),
         textDirection: TextDirection.ltr,
       )..layout(maxWidth: cw);
-      tp.paint(canvas, Offset(x + (cw - tp.width) / 2, y + (ch - tp.height) / 2));
+      tp.paint(
+        canvas,
+        Offset(x + (cw - tp.width) / 2, y + (ch - tp.height) / 2),
+      );
+      tp.dispose();
     }
 
     final ink = dark ? AppColors.inkDark : AppColors.ink;
@@ -66,7 +93,13 @@ class _TablePainter extends CustomPainter {
       final rect = Rect.fromLTWH(x, 0, cw, ch);
       canvas.drawRect(rect, Paint()..color = headerBg);
       canvas.drawRect(rect, border);
-      label(c < frame.colHeader.length ? frame.colHeader[c] : '', x, 0, color: ink, fw: FontWeight.w700);
+      label(
+        c < frame.colHeader.length ? frame.colHeader[c] : '',
+        x,
+        0,
+        color: ink,
+        fw: FontWeight.w700,
+      );
     }
     // Row headers.
     for (var r = 0; r < frame.rows; r++) {
@@ -74,7 +107,13 @@ class _TablePainter extends CustomPainter {
       final rect = Rect.fromLTWH(0, y, cw, ch);
       canvas.drawRect(rect, Paint()..color = headerBg);
       canvas.drawRect(rect, border);
-      label(r < frame.rowHeader.length ? frame.rowHeader[r] : '', 0, y, color: ink, fw: FontWeight.w700);
+      label(
+        r < frame.rowHeader.length ? frame.rowHeader[r] : '',
+        0,
+        y,
+        color: ink,
+        fw: FontWeight.w700,
+      );
     }
 
     // Cells.
@@ -85,19 +124,30 @@ class _TablePainter extends CustomPainter {
         final key = r * frame.cols + c;
         final isFilled = frame.filled.contains(key);
         Color fill = isFilled ? base : Color.lerp(base, headerBg, 0.5)!;
-        if (frame.refs.contains(key)) fill = Color.lerp(base, AppColors.compare, 0.35)!;
-        if (frame.activeR == r && frame.activeC == c) fill = Color.lerp(base, AppColors.active, 0.45)!;
+        if (frame.refs.contains(key)) {
+          fill = Color.lerp(base, AppColors.compare, 0.35)!;
+        }
+        if (frame.activeR == r && frame.activeC == c) {
+          fill = Color.lerp(base, AppColors.active, 0.45)!;
+        }
         final rect = Rect.fromLTWH(x, y, cw, ch);
         canvas.drawRect(rect, Paint()..color = fill);
         canvas.drawRect(rect, border);
         if (isFilled) {
           final raw = frame.cells[r][c];
-          label(raw >= (1 << 28) ? '∞' : '$raw', x, y, color: ink, fw: FontWeight.w600);
+          label(
+            raw >= (1 << 28) ? '∞' : '$raw',
+            x,
+            y,
+            color: ink,
+            fw: FontWeight.w600,
+          );
         }
       }
     }
   }
 
   @override
-  bool shouldRepaint(covariant _TablePainter old) => old.frame != frame || old.dark != dark;
+  bool shouldRepaint(covariant _TablePainter old) =>
+      old.frame != frame || old.dark != dark;
 }

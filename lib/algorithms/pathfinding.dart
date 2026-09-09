@@ -76,14 +76,15 @@ List<int> _reconstruct(Map<int, int> cameFrom, int node) {
 }
 
 /// Adds the path-tracing frames shared by every grid search on success.
-void _tracePath(List<GridFrame> frames, Set<int> open, Set<int> closed, List<int> path) {
+void _tracePath(List<GridFrame> frames, Set<int> open, Set<int> closed,
+    List<int> path, {bool shortest = true}) {
   for (var k = 1; k <= path.length; k++) {
     frames.add(GridFrame(
       open: {...open},
       closed: {...closed},
       path: path.sublist(0, k),
       caption: k == path.length
-          ? 'Shortest path found (${path.length - 1} steps).'
+          ? '${shortest ? 'Shortest path' : 'Path'} found (${path.length - 1} steps).'
           : 'Tracing the path back…',
     ));
   }
@@ -204,7 +205,7 @@ GridRun dfsDemo({int? seed}) {
     closed.add(current);
 
     if (current == g.goal) {
-      _tracePath(frames, open, closed, _reconstruct(cameFrom, current));
+      _tracePath(frames, open, closed, _reconstruct(cameFrom, current), shortest: false);
       return _runOf(g, frames);
     }
 
@@ -350,7 +351,7 @@ GridRun greedyBestFirstDemo({int? seed}) {
     open.remove(current);
     closed.add(current);
     if (current == g.goal) {
-      _tracePath(frames, open, closed, _reconstruct(cameFrom, current));
+      _tracePath(frames, open, closed, _reconstruct(cameFrom, current), shortest: false);
       return _runOf(g, frames);
     }
     frames.add(GridFrame(open: {...open}, closed: {...closed}, current: current, caption: 'Expand the cell with the smallest heuristic h.'));
@@ -370,16 +371,18 @@ GridRun floodFillDemo({int? seed}) {
   final g = _makeGrid(seed);
   final frames = <GridFrame>[];
   final queue = <int>[g.start];
-  final filled = <int>{g.start};
+  final seen = <int>{g.start};
+  final filled = <int>{};
   final open = <int>{g.start};
   frames.add(GridFrame(open: {...open}, caption: 'Flood fill spreads from the seed to all connected open cells.'));
   while (queue.isNotEmpty) {
     final cur = queue.removeAt(0);
     open.remove(cur);
+    filled.add(cur);
     frames.add(GridFrame(open: {...open}, closed: {...filled}, current: cur, caption: 'Fill this cell, then spread to its open neighbours.'));
     for (final nb in g.neighbors(cur)) {
-      if (g.walls.contains(nb) || filled.contains(nb)) continue;
-      filled.add(nb);
+      if (g.walls.contains(nb) || seen.contains(nb)) continue;
+      seen.add(nb);
       queue.add(nb);
       open.add(nb);
     }

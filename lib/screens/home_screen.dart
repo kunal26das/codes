@@ -27,8 +27,9 @@ class _HomeScreenState extends State<HomeScreen> {
   List<AlgorithmInfo> get _filtered {
     final q = _query.trim().toLowerCase();
     return catalog.where((a) {
-      if (_categoryFilter != null && a.category != _categoryFilter)
+      if (_categoryFilter != null && a.category != _categoryFilter) {
         return false;
+      }
       if (q.isEmpty) return true;
       return a.name.toLowerCase().contains(q) ||
           a.blurb.toLowerCase().contains(q) ||
@@ -218,7 +219,7 @@ class _StatRow extends StatelessWidget {
       children: [
         _Stat(value: '$algos', label: 'algorithms'),
         _Stat(value: '$cats', label: 'categories'),
-        _Stat(value: 'Live', label: 'animated'),
+        const _Stat(value: 'Live', label: 'animated'),
       ],
     );
   }
@@ -277,7 +278,7 @@ class _SearchBar extends StatelessWidget {
             textInputAction: TextInputAction.search,
             decoration: InputDecoration(
               isDense: true,
-              hintText: 'Search 158 algorithms…',
+              hintText: 'Search ${catalog.length} algorithms…',
               prefixIcon: const Icon(Icons.search_rounded, size: 20),
               suffixIcon: query.isEmpty
                   ? null

@@ -335,11 +335,18 @@ List<TreeFrame> bstDelete(List<int> values, int target) {
     }
   }
 
+  void removeNode(int id) {
+    t.value.remove(id);
+    t.left.remove(id);
+    t.right.remove(id);
+  }
+
   final l = t.left[cur], r = t.right[cur];
   if (l == null || r == null) {
     // 0 or 1 child.
     final child = l ?? r;
     replaceChild(parent, cur, child);
+    removeNode(cur);
     frames.add(TreeFrame(nodes: t.snap(), rootId: t.root, caption: 'Splice it out, promoting its ${child == null ? 'absent' : 'single'} child.'));
   } else {
     // 2 children: replace value with in-order successor, then delete that.
@@ -352,6 +359,7 @@ List<TreeFrame> bstDelete(List<int> values, int target) {
     frames.add(TreeFrame(nodes: t.snap(), rootId: t.root, highlight: {succ}, caption: 'In-order successor is ${t.value[succ]}.'));
     t.value[cur] = t.value[succ]!;
     replaceChild(succParent, succ, t.right[succ]);
+    removeNode(succ);
     frames.add(TreeFrame(nodes: t.snap(), rootId: t.root, highlight: {cur}, caption: 'Copy ${t.value[cur]} up and remove the successor.'));
   }
   frames.add(TreeFrame(nodes: t.snap(), rootId: t.root, caption: 'Deleted — BST property preserved.'));

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/frames.dart';
 import '../theme/app_colors.dart';
+import 'zoomable_canvas.dart';
 
 /// Renders one [MatrixFrame] as three labelled grids: A op B = C, with the
 /// row/column feeding the active result cell highlighted.
@@ -13,13 +14,24 @@ class MatrixView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return CustomPaint(
-          size: Size(constraints.maxWidth, constraints.maxHeight),
-          painter: _MatrixPainter(frame: frame, dark: dark),
-        );
-      },
+    final maxRows = [
+      frame.a.length,
+      frame.b.length,
+      frame.c.length,
+    ].reduce((a, b) => a > b ? a : b);
+    return ZoomableCanvas(
+      minimumSize: Size(
+        (frame.a.first.length +
+                frame.b.first.length +
+                frame.c.first.length +
+                3) *
+            54,
+        maxRows * 54 + 50,
+      ),
+      builder: (size) => CustomPaint(
+        size: size,
+        painter: _MatrixPainter(frame: frame, dark: dark),
+      ),
     );
   }
 }
@@ -35,8 +47,11 @@ class _MatrixPainter extends CustomPainter {
     final aCols = frame.a[0].length;
     final bCols = frame.b[0].length;
     final cCols = frame.c[0].length;
-    final maxRows = [frame.a.length, frame.b.length, frame.c.length]
-        .reduce((x, y) => x > y ? x : y);
+    final maxRows = [
+      frame.a.length,
+      frame.b.length,
+      frame.c.length,
+    ].reduce((x, y) => x > y ? x : y);
 
     // Total horizontal "columns" including two operator gaps (~1 col each).
     final totalCols = aCols + bCols + cCols + 3.0;
@@ -76,7 +91,9 @@ class _MatrixPainter extends CustomPainter {
           }
           if (isResult) {
             final key = i * cols + j;
-            if (!frame.filled.contains(key)) fill = Color.lerp(base, headerBg, 0.5)!;
+            if (!frame.filled.contains(key)) {
+              fill = Color.lerp(base, headerBg, 0.5)!;
+            }
             if (frame.activeR == i && frame.activeC == j) {
               fill = Color.lerp(base, AppColors.active, 0.45)!;
             }
@@ -89,11 +106,18 @@ class _MatrixPainter extends CustomPainter {
             final tp = TextPainter(
               text: TextSpan(
                 text: '${m[i][j]}',
-                style: TextStyle(color: ink, fontSize: cell * 0.34, fontWeight: FontWeight.w600),
+                style: TextStyle(
+                  color: ink,
+                  fontSize: cell * 0.34,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               textDirection: TextDirection.ltr,
             )..layout(maxWidth: cell);
-            tp.paint(canvas, Offset(x + (cell - tp.width) / 2, y + (cell - tp.height) / 2));
+            tp.paint(
+              canvas,
+              Offset(x + (cell - tp.width) / 2, y + (cell - tp.height) / 2),
+            );
           }
         }
       }
@@ -101,11 +125,21 @@ class _MatrixPainter extends CustomPainter {
       final label = TextPainter(
         text: TextSpan(
           text: name,
-          style: TextStyle(color: ink, fontSize: 13, fontWeight: FontWeight.w700),
+          style: TextStyle(
+            color: ink,
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+          ),
         ),
         textDirection: TextDirection.ltr,
       )..layout();
-      label.paint(canvas, Offset(startX + (cols * cell - label.width) / 2, yOffset + rows * cell + 4));
+      label.paint(
+        canvas,
+        Offset(
+          startX + (cols * cell - label.width) / 2,
+          yOffset + rows * cell + 4,
+        ),
+      );
       return startX + cols * cell;
     }
 
@@ -113,11 +147,18 @@ class _MatrixPainter extends CustomPainter {
       final tp = TextPainter(
         text: TextSpan(
           text: g,
-          style: TextStyle(color: ink, fontSize: cell * 0.6, fontWeight: FontWeight.w700),
+          style: TextStyle(
+            color: ink,
+            fontSize: cell * 0.6,
+            fontWeight: FontWeight.w700,
+          ),
         ),
         textDirection: TextDirection.ltr,
       )..layout();
-      tp.paint(canvas, Offset(x + (cell - tp.width) / 2, top + (blockHeight - tp.height) / 2));
+      tp.paint(
+        canvas,
+        Offset(x + (cell - tp.width) / 2, top + (blockHeight - tp.height) / 2),
+      );
     }
 
     var x = 0.0;
@@ -131,5 +172,6 @@ class _MatrixPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _MatrixPainter old) => old.frame != frame || old.dark != dark;
+  bool shouldRepaint(covariant _MatrixPainter old) =>
+      old.frame != frame || old.dark != dark;
 }

@@ -349,34 +349,52 @@ GraphRun unionFind() {
   final frames = <GraphFrame>[];
 
   void addEdge(int child, int par) {
-    final e = GraphEdge(child, par, 0);
+    final e = GraphEdge.directed(child, par, 0);
     if (edgeSeen.add(e.key)) edges.add(e);
   }
 
   Set<int> activeEdges() {
     final s = <int>{};
     for (var i = 0; i < n; i++) {
-      if (parent[i] != i) s.add(GraphEdge(i, parent[i], 0).key);
+      if (parent[i] != i) s.add(GraphEdge.directed(i, parent[i], 0).key);
     }
     return s;
   }
 
-  int find(int x) {
-    while (parent[x] != x) {
-      x = parent[x];
+  int find(int x, {bool animate = false}) {
+    if (parent[x] == x) return x;
+    final root = find(parent[x], animate: animate);
+    if (parent[x] != root) {
+      parent[x] = root;
+      addEdge(x, root);
+      if (animate) {
+        frames.add(
+          GraphFrame(
+            treeEdges: activeEdges(),
+            current: x,
+            caption: 'Compress the path: $x now points straight at root $root.',
+          ),
+        );
+      }
     }
-    return x;
+    return root;
   }
 
-  frames.add(const GraphFrame(caption: 'Seven singleton sets — each element is its own root.'));
+  frames.add(
+    const GraphFrame(
+      caption: 'Seven singleton sets — each element is its own root.',
+    ),
+  );
 
   void union(int a, int b) {
     final ra = find(a), rb = find(b);
-    frames.add(GraphFrame(
-      treeEdges: activeEdges(),
-      current: ra,
-      caption: 'union($a, $b): roots are $ra and $rb.',
-    ));
+    frames.add(
+      GraphFrame(
+        treeEdges: activeEdges(),
+        current: ra,
+        caption: 'union($a, $b): roots are $ra and $rb.',
+      ),
+    );
     if (ra == rb) {
       return;
     }
@@ -391,29 +409,50 @@ GraphRun unionFind() {
       rank[ra]++;
       addEdge(rb, ra);
     }
-    frames.add(GraphFrame(
-      treeEdges: activeEdges(),
-      current: find(a),
-      caption: 'Linked: the shorter tree hangs under the taller root.',
-    ));
+    frames.add(
+      GraphFrame(
+        treeEdges: activeEdges(),
+        current: find(a),
+        caption: 'Linked: the shorter tree hangs under the taller root.',
+      ),
+    );
   }
 
-  for (final pair in const [[0, 1], [2, 3], [1, 3], [4, 5], [5, 6], [0, 6]]) {
+  for (final pair in const [
+    [0, 1],
+    [2, 3],
+    [1, 3],
+    [4, 5],
+    [5, 6],
+    [0, 6],
+  ]) {
     union(pair[0], pair[1]);
   }
 
-  // Path compression on a deep find.
-  parent[2] = find(2);
-  addEdge(2, parent[2]);
-  frames.add(GraphFrame(
-    treeEdges: activeEdges(),
-    current: parent[2],
-    caption: 'find(2) compresses the path: 2 now points straight at the root.',
-  ));
+  frames.add(
+    GraphFrame(
+      treeEdges: activeEdges(),
+      current: 3,
+      caption: 'find(3) follows 3 → 2 → 0; shorten that path to the root.',
+    ),
+  );
+  find(3, animate: true);
 
-  frames.add(GraphFrame(treeEdges: activeEdges(), caption: 'All elements share one root — a single connected set.'));
+  frames.add(
+    GraphFrame(
+      treeEdges: activeEdges(),
+      caption: 'All elements share one root — a single connected set.',
+    ),
+  );
 
-  return GraphRun(nodeLabels: labels, positions: positions, edges: edges, frames: frames, directed: true);
+  return GraphRun(
+    nodeLabels: labels,
+    positions: positions,
+    edges: edges,
+    frames: frames,
+    directed: true,
+    activeEdgesOnly: true,
+  );
 }
 
 // --- AVL tree --------------------------------------------------------------
@@ -533,40 +572,77 @@ List<TreeFrame> segmentTree() {
   final hi = <int, int>{};
   var nextId = 0;
 
-  final frames = <TreeFrame>[
-    TreeFrame(nodes: const [], caption: 'Build a segment tree over [${data.join(', ')}] — nodes hold range sums.'),
-  ];
+  final frames = <TreeFrame>[];
 
   List<BstNode> snap() => [
-        for (final id in value.keys) BstNode(id: id, value: value[id]!, left: left[id], right: right[id]),
-      ];
+    for (final id in value.keys)
+      BstNode(id: id, value: value[id]!, left: left[id], right: right[id]),
+  ];
 
-  int? rootId;
-
-  int build(int l, int r) {
+  // Allocate the complete connected shape before emitting any frames. Values
+  // start at zero and are filled in post-order, after both children are ready.
+  int shape(int l, int r) {
     final id = nextId++;
     lo[id] = l;
     hi[id] = r;
+    value[id] = 0;
     left[id] = null;
     right[id] = null;
-    if (l == r) {
-      value[id] = data[l];
-      frames.add(TreeFrame(nodes: snap(), rootId: rootId ?? id, highlight: {id}, caption: 'Leaf [$l] = ${data[l]}.'));
-      return id;
+    if (l < r) {
+      final mid = (l + r) ~/ 2;
+      left[id] = shape(l, mid);
+      right[id] = shape(mid + 1, r);
     }
-    final mid = (l + r) ~/ 2;
-    final lc = build(l, mid);
-    final rc = build(mid + 1, r);
-    left[id] = lc;
-    right[id] = rc;
-    value[id] = value[lc]! + value[rc]!;
-    rootId ??= id;
-    frames.add(TreeFrame(nodes: snap(), rootId: 0, highlight: {id}, caption: 'Node [$l..$r] = ${value[lc]} + ${value[rc]} = ${value[id]}.'));
     return id;
   }
 
-  rootId = build(0, n - 1);
-  frames.add(TreeFrame(nodes: snap(), rootId: 0, caption: 'Root holds the total sum ${value[0]}; any range sum is now O(log n).'));
+  final rootId = shape(0, n - 1);
+  frames.add(
+    TreeFrame(
+      nodes: snap(),
+      rootId: rootId,
+      caption:
+          'Set up ranges over [${data.join(', ')}] — values are 0 until computed.',
+    ),
+  );
+
+  void build(int id) {
+    final l = lo[id]!, r = hi[id]!;
+    if (l == r) {
+      value[id] = data[l];
+      frames.add(
+        TreeFrame(
+          nodes: snap(),
+          rootId: rootId,
+          highlight: {id},
+          caption: 'Leaf [$l] = ${data[l]}.',
+        ),
+      );
+      return;
+    }
+    final lc = left[id]!, rc = right[id]!;
+    build(lc);
+    build(rc);
+    value[id] = value[lc]! + value[rc]!;
+    frames.add(
+      TreeFrame(
+        nodes: snap(),
+        rootId: rootId,
+        highlight: {id},
+        caption: 'Node [$l..$r] = ${value[lc]} + ${value[rc]} = ${value[id]}.',
+      ),
+    );
+  }
+
+  build(rootId);
+  frames.add(
+    TreeFrame(
+      nodes: snap(),
+      rootId: rootId,
+      caption:
+          'Root holds the total sum ${value[rootId]}; any range sum is now O(log n).',
+    ),
+  );
   return frames;
 }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/frames.dart';
 import '../theme/app_colors.dart';
+import 'zoomable_canvas.dart';
 
 /// Renders an [ArrayFrame] as a row of value-proportional bars with
 /// role-based colouring. Shared by sorting and searching visualizers.
@@ -13,13 +14,24 @@ class BarsView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return CustomPaint(
-          size: Size(constraints.maxWidth, constraints.maxHeight),
-          painter: _BarsPainter(frame: frame, dark: dark),
-        );
-      },
+    var cellWidth = 32.0;
+    for (final value in frame.values) {
+      final label = TextPainter(
+        text: TextSpan(
+          text: '$value',
+          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      if (label.width + 12 > cellWidth) cellWidth = label.width + 12;
+      label.dispose();
+    }
+    return ZoomableCanvas(
+      minimumSize: Size(frame.values.length * cellWidth, 180),
+      builder: (size) => CustomPaint(
+        size: size,
+        painter: _BarsPainter(frame: frame, dark: dark),
+      ),
     );
   }
 }
@@ -49,7 +61,15 @@ class _BarsPainter extends CustomPainter {
     final usable = size.height - 22;
     double yOf(double v) => (top - v) / span * usable;
     final zeroY = yOf(0);
-    final showLabels = n <= 24 && barW >= 14 && minV >= 0;
+    if (minV < 0) {
+      canvas.drawLine(
+        Offset(0, zeroY),
+        Offset(size.width, zeroY),
+        Paint()
+          ..color = (dark ? AppColors.inkSoftDark : AppColors.inkSoft)
+              .withValues(alpha: 0.5),
+      );
+    }
 
     final paint = Paint()..style = PaintingStyle.fill;
     for (var i = 0; i < n; i++) {
@@ -69,7 +89,7 @@ class _BarsPainter extends CustomPainter {
       );
       canvas.drawRRect(rect, paint);
 
-      if (showLabels) {
+      if (barW >= 14) {
         final tp = TextPainter(
           text: TextSpan(
             text: '${values[i]}',
@@ -82,6 +102,7 @@ class _BarsPainter extends CustomPainter {
           textDirection: TextDirection.ltr,
         )..layout(maxWidth: barW + gap);
         tp.paint(canvas, Offset(x + (barW - tp.width) / 2, size.height - 16));
+        tp.dispose();
       }
     }
   }
