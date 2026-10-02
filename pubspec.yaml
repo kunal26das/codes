@@ -10,7 +10,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  google_fonts: ^8.1.0
+  google_fonts: ^9.0.0
   # Preserve native refraction while excluding Impeller-only shaders on web.
   liquid_glass_renderer:
     path: third_party/liquid_glass_renderer
